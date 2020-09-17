@@ -964,4 +964,5 @@
     <string name="strict_mode">Strict mode: no HTTP connection allowed!</string>
     <string name="fullscreen">Fullscreen</string>
     <string name="more">More</string>
+    <string name="search_error">Error getting search results</string>
 </resources>
