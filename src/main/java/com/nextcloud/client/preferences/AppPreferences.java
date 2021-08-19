@@ -361,4 +361,8 @@ public interface AppPreferences {
     void resetPinWrongAttempts();
 
     int pinBruteForceDelay();
+
+    String getUidPid();
+
+    void setUidPid(String uidPid);
 }

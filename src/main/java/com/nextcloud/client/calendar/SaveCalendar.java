@@ -19,10 +19,12 @@
 package com.nextcloud.client.calendar;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
@@ -39,8 +41,10 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
 
+import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.R;
 import com.owncloud.android.lib.common.utils.Log_OC;
+import com.owncloud.android.utils.DisplayUtils;
 
 import net.fortuna.ical4j.data.CalendarOutputter;
 import net.fortuna.ical4j.model.Calendar;
@@ -73,9 +77,6 @@ import net.fortuna.ical4j.model.property.Version;
 import net.fortuna.ical4j.model.property.XProperty;
 import net.fortuna.ical4j.util.CompatibilityHints;
 
-import org.sufficientlysecure.ical.ui.MainActivity;
-import org.sufficientlysecure.ical.ui.dialogs.RunnableWithProgress;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -89,9 +90,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+
+import javax.inject.Inject;
 
 @SuppressLint("NewApi")
-public class SaveCalendar extends RunnableWithProgress {
+public class SaveCalendar {
     private static final String TAG = "ICS_SaveCalendar";
 
     private final PropertyFactoryImpl mPropertyFactory = PropertyFactoryImpl.getInstance();
@@ -99,6 +103,14 @@ public class SaveCalendar extends RunnableWithProgress {
     private final Set<TimeZone> mInsertedTimeZones = new HashSet<>();
     private final Set<String> mFailedOrganisers = new HashSet<>();
     boolean mAllCols;
+    private final Activity activity;
+    private final AndroidCalendar selectedCal;
+
+    @Inject AppPreferences preferences;
+
+    // UID generation
+    long mUidMs = 0;
+    String mUidTail = null;
 
     private static final List<String> STATUS_ENUM = Arrays.asList("TENTATIVE", "CONFIRMED", "CANCELLED");
     private static final List<String> CLASS_ENUM = Arrays.asList(null, "CONFIDENTIAL", "PRIVATE", "PUBLIC");
@@ -116,21 +128,18 @@ public class SaveCalendar extends RunnableWithProgress {
         Reminders.MINUTES, Reminders.METHOD
     };
 
-    public SaveCalendar(MainActivity activity) {
-        super(activity, R.string.writing_calendar_to_file, true);
+    public SaveCalendar(Activity activity, AndroidCalendar calendar) {
+        this.activity = activity;
+        this.selectedCal = calendar;
     }
 
-    @Override
+    // TODO how to run?
     protected void run() throws Exception {
-        final MainActivity activity = getActivity();
-        final Settings settings = activity.getSettings();
-        final AndroidCalendar selectedCal = activity.getSelectedCalendar();
-
         mInsertedTimeZones.clear();
         mFailedOrganisers.clear();
-        mAllCols = settings.getQueryAllColumns();
+        mAllCols = false; // settings.getQueryAllColumns(); // TODO remove: option, default is false
 
-        String lastName = settings.getString(Settings.PREF_LASTEXPORTFILE);
+        String lastName = ""; // TODO get rid after test
         String suggestedName = calculateFileName(selectedCal.mDisplayName);
         if (TextUtils.isEmpty(lastName)) {
             lastName = suggestedName;
@@ -141,7 +150,6 @@ public class SaveCalendar extends RunnableWithProgress {
             return;
         }
 
-        settings.putString(Settings.PREF_LASTEXPORTFILE, file);
         if (!file.endsWith(".ics")) {
             file += ".ics";
         }
@@ -177,7 +185,7 @@ public class SaveCalendar extends RunnableWithProgress {
         if (Events.UID_2445 != null) {
             numberOfCreatedUids = ensureUids(activity, resolver, selectedCal);
         }
-        boolean relaxed = settings.getIcal4jValidationRelaxed();
+        boolean relaxed = true; // settings.getIcal4jValidationRelaxed(); // TODO is this option needed? default true
         CompatibilityHints.setHintEnabled(CompatibilityHints.KEY_RELAXED_VALIDATION, relaxed);
         List<VEvent> events = getEvents(resolver, selectedCal, cal);
 
@@ -192,10 +200,10 @@ public class SaveCalendar extends RunnableWithProgress {
         if (numberOfCreatedUids > 0) {
             msg += "\n" + res.getQuantityString(R.plurals.created_n_uids_to, numberOfCreatedUids, numberOfCreatedUids);
         }
-        activity.showToast(msg);
+        DisplayUtils.showSnackMessage(activity, msg);
     }
 
-    private int ensureUids(MainActivity activity, ContentResolver resolver, AndroidCalendar cal) {
+    private int ensureUids(Context activity, ContentResolver resolver, AndroidCalendar cal) {
         String[] cols = new String[]{Events._ID};
         String[] args = new String[]{cal.mIdStr};
         Map<Long, String> newUids = new HashMap<>();
@@ -203,7 +211,7 @@ public class SaveCalendar extends RunnableWithProgress {
                                     Events.CALENDAR_ID + " = ? AND " + Events.UID_2445 + " IS NULL", args, null);
         while (cur.moveToNext()) {
             Long id = getLong(cur, Events._ID);
-            String uid = activity.generateUid();
+            String uid = generateUid();
             newUids.put(id, uid);
         }
         for (Long id : newUids.keySet()) {
@@ -239,16 +247,12 @@ public class SaveCalendar extends RunnableWithProgress {
         DtStamp timestamp = new DtStamp(); // Same timestamp for all events
 
         // Collect up events and add them after any timezones
-        setMax(cur.getCount());
         List<VEvent> events = new ArrayList<>();
         while (cur.moveToNext()) {
-            incrementProgress();
             VEvent e = convertFromDb(cur, cal_dst, timestamp);
             if (e != null) {
                 events.add(e);
-                if (Log_OC.getIsUserEnabled()) {
-                    Log_OC.d(TAG, "Adding event: " + e.toString());
-                }
+                Log_OC.d(TAG, "Adding event: " + e.toString());
             }
         }
         cur.close();
@@ -265,7 +269,7 @@ public class SaveCalendar extends RunnableWithProgress {
     private void getFileImpl(final String previousFile, final String suggestedFile,
                              final String[] result) {
 
-        final EditText input = new EditText(getActivity());
+        final EditText input = new EditText(activity);
         input.setHint(R.string.destination_filename);
         input.setText(previousFile);
         input.selectAll();
@@ -273,7 +277,7 @@ public class SaveCalendar extends RunnableWithProgress {
         final int ok = android.R.string.ok;
         final int cancel = android.R.string.cancel;
         final int suggest = R.string.suggest;
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         AlertDialog dlg = builder.setIcon(R.mipmap.ic_launcher)
             .setTitle(R.string.enter_destination_filename)
             .setView(input)
@@ -312,7 +316,7 @@ public class SaveCalendar extends RunnableWithProgress {
 
     private String getFile(final String previousFile, final String suggestedFile) {
         final String[] result = new String[1];
-        getActivity().runOnUiThread(new Runnable() {
+        activity.runOnUiThread(new Runnable() {
             public void run() {
                 getFileImpl(previousFile, suggestedFile, result);
             }
@@ -327,9 +331,7 @@ public class SaveCalendar extends RunnableWithProgress {
     }
 
     private VEvent convertFromDb(Cursor cur, Calendar cal, DtStamp timestamp) {
-        if (Log_OC.getIsUserEnabled()) {
-            Log_OC.d(TAG, "cursor: " + DatabaseUtils.dumpCurrentRowToString(cur));
-        }
+        Log_OC.d(TAG, "cursor: " + DatabaseUtils.dumpCurrentRowToString(cur));
 
         if (hasStringValue(cur, Events.ORIGINAL_ID)) {
             // FIXME: Support these edited instances
@@ -454,7 +456,7 @@ public class SaveCalendar extends RunnableWithProgress {
             String s = summary == null ? (description == null ? "" : description) : summary;
             Description desc = new Description(s);
 
-            ContentResolver resolver = getActivity().getContentResolver();
+            ContentResolver resolver = activity.getContentResolver();
             long eventId = getLong(cur, Events._ID);
             Cursor alarmCur;
             alarmCur = Reminders.query(resolver, eventId, mAllCols ? null : REMINDER_COLS);
@@ -593,5 +595,24 @@ public class SaveCalendar extends RunnableWithProgress {
             }
         } catch (IOException | URISyntaxException | ParseException ignored) {
         }
+    }
+
+    // TODO move this to some common place
+    private String generateUid() {
+        // Generated UIDs take the form <ms>-<uuid>@nextcloud.com.
+        if (mUidTail == null) {
+            String uidPid = preferences.getUidPid();
+            if (uidPid.length() == 0) {
+                uidPid = UUID.randomUUID().toString().replace("-", "");
+                preferences.setUidPid(uidPid);
+            }
+            mUidTail = uidPid + "@nextcloud.com";
+        }
+
+        mUidMs = Math.max(mUidMs, System.currentTimeMillis());
+        String uid = mUidMs + mUidTail;
+        mUidMs++;
+
+        return uid;
     }
 }

@@ -90,6 +90,7 @@ public final class AppPreferencesImpl implements AppPreferences {
     private static final String PREF__PHOTO_SEARCH_TIMESTAMP = "photo_search_timestamp";
     private static final String PREF__POWER_CHECK_DISABLED = "power_check_disabled";
     private static final String PREF__PIN_BRUTE_FORCE_COUNT = "pin_brute_force_count";
+    private static final String PREF__UID_PID = "uid_pid";
 
     private final Context context;
     private final SharedPreferences preferences;
@@ -658,6 +659,16 @@ public final class AppPreferencesImpl implements AppPreferences {
         int count = preferences.getInt(PREF__PIN_BRUTE_FORCE_COUNT, 0);
 
         return computeBruteForceDelay(count);
+    }
+
+    @Override
+    public String getUidPid() {
+        return preferences.getString(PREF__UID_PID, "");
+    }
+
+    @Override
+    public void setUidPid(String uidPid) {
+        preferences.edit().putString(PREF__UID_PID, uidPid).apply();
     }
 
     @VisibleForTesting

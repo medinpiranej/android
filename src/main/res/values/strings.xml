@@ -51,7 +51,7 @@
     <string name="prefs_calendar_contacts_address_resolve_error">Server address for the account could not be resolved for DAVx5 (formerly known as DAVdroid)</string>
     <string name="prefs_calendar_contacts_no_store_error">Neither F-Droid nor Google Play is installed</string>
     <string name="prefs_calendar_contacts_sync_setup_successful">Calendar &amp; contacts sync set up</string>
-    <string name="prefs_daily_contacts_sync_summary">Daily backup of your contacts</string>
+    <string name="prefs_daily_backup_summary">Daily backup of your calendar &amp; contacts</string>
     <string name="prefs_sycned_folders_summary">Manage folders for auto upload</string>
     <string name="prefs_help">Help</string>
     <string name="prefs_recommend">Recommend to friend</string>
@@ -186,6 +186,22 @@
     <plurals name="sync_foreign_files_forgotten_content">
         <item quantity="one">Failed to copy %1$d file from the %2$s folder into</item>
         <item quantity="other">Failed to copy %1$d files from the %2$s folder into</item>
+    </plurals>
+    <plurals name="wrote_n_events_to">
+        <item quantity="one">Wrote %1$d event to %2$s</item>
+        <item quantity="other">Wrote %1$d events to %2$s</item>
+    </plurals>
+    <plurals name="created_n_uids_to">
+        <item quantity="one">Created %1$d fresh UID</item>
+        <item quantity="other">Created %1$d fresh UIDs</item>
+    </plurals>
+    <plurals name="processed_n_entries">
+        <item quantity="one">Processed %d entry.</item>
+        <item quantity="other">Processed %d entries.</item>
+    </plurals>
+    <plurals name="found_n_duplicates">
+        <item quantity="one">Found %d duplicate entry.</item>
+        <item quantity="other">Found %d duplicate entries.</item>
     </plurals>
     <string name="sync_foreign_files_forgotten_explanation">As of version 1.3.16, files uploaded from this device are copied into the local %1$s folder to prevent data loss when a single file is synced with multiple accounts.\n\nDue to this change, all files uploaded with earlier versions of this app were copied into the %2$s folder. However, an error prevented the completion of this operation during account synchronization. You may either leave the file(s) as is and delete the link to %3$s, or move the file(s) into the %1$s folder and retain the link to %4$s.\n\nListed below are the local file(s), and the remote file(s) in %5$s they were linked to.</string>
     <string name="sync_current_folder_was_removed">The folder %1$s does not exist anymore</string>
@@ -580,12 +596,13 @@
     <string name="contaclist_restore_selected">Restore selected contacts</string>
     <string name="contactlist_account_chooser_title">Choose account to import</string>
     <string name="contactlist_no_permission">No permission given, nothing imported.</string>
-    <string name="contacts_preference_choose_date">Choose date</string>
+    <string name="restore_backup">Restore backup</string>
     <string name="contacts_preference_backup_never">never</string>
     <string name="contacts_preferences_no_file_found">No file found</string>
     <string name="contacts_preferences_something_strange_happened">Could not find your last backup!</string>
     <string name="contacts_preferences_backup_scheduled">Backup scheduled and will start shortly</string>
     <string name="contacts_preferences_import_scheduled">Import scheduled and will start shortly</string>
+    <string name="backup_title">Contacts &amp; calendar backup</string>
 
     <string name="drawer_logout">Log out</string>
     <string name="picture_set_as_no_app">No app found to set a picture with</string>
@@ -963,4 +980,8 @@
     <string name="choose_template_helper_text">Please choose a template and enter a file name.</string>
     <string name="strict_mode">Strict mode: no HTTP connection allowed!</string>
     <string name="fullscreen">Fullscreen</string>
+    <string name="destination_filename">Destination filename</string>
+    <string name="suggest">Suggest</string>
+    <string name="enter_destination_filename">Enter destination filename</string>
+    <string name="did_not_check_for_dupes">Did not check for duplicates.</string>
 </resources>

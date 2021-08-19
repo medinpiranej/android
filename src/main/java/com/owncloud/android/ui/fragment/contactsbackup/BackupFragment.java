@@ -41,7 +41,7 @@ import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.jobs.BackgroundJobManager;
 import com.nextcloud.java.util.Optional;
 import com.owncloud.android.R;
-import com.owncloud.android.databinding.ContactsBackupFragmentBinding;
+import com.owncloud.android.databinding.BackupFragmentBinding;
 import com.owncloud.android.datamodel.ArbitraryDataProvider;
 import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
@@ -76,15 +76,15 @@ import third_parties.daveKoeller.AlphanumComparator;
 import static com.owncloud.android.ui.activity.ContactsPreferenceActivity.PREFERENCE_CONTACTS_AUTOMATIC_BACKUP;
 import static com.owncloud.android.ui.activity.ContactsPreferenceActivity.PREFERENCE_CONTACTS_LAST_BACKUP;
 
-public class ContactsBackupFragment extends FileFragment implements DatePickerDialog.OnDateSetListener, Injectable {
-    public static final String TAG = ContactsBackupFragment.class.getSimpleName();
+public class BackupFragment extends FileFragment implements DatePickerDialog.OnDateSetListener, Injectable {
+    public static final String TAG = BackupFragment.class.getSimpleName();
     private static final String ARG_SHOW_SIDEBAR = "SHOW_SIDEBAR";
     private static final String KEY_CALENDAR_PICKER_OPEN = "IS_CALENDAR_PICKER_OPEN";
     private static final String KEY_CALENDAR_DAY = "CALENDAR_DAY";
     private static final String KEY_CALENDAR_MONTH = "CALENDAR_MONTH";
     private static final String KEY_CALENDAR_YEAR = "CALENDAR_YEAR";
 
-    private ContactsBackupFragmentBinding binding;
+    private BackupFragmentBinding binding;
 
     @Inject BackgroundJobManager backgroundJobManager;
 
@@ -98,8 +98,8 @@ public class ContactsBackupFragment extends FileFragment implements DatePickerDi
     private Account account;
     private boolean showSidebar = true;
 
-    public static ContactsBackupFragment create(boolean showSidebar) {
-        ContactsBackupFragment fragment = new ContactsBackupFragment();
+    public static BackupFragment create(boolean showSidebar) {
+        BackupFragment fragment = new BackupFragment();
         Bundle bundle = new Bundle();
         bundle.putBoolean(ARG_SHOW_SIDEBAR, showSidebar);
         fragment.setArguments(bundle);
@@ -114,7 +114,7 @@ public class ContactsBackupFragment extends FileFragment implements DatePickerDi
             getContext().getTheme().applyStyle(R.style.FallbackThemingTheme, true);
         }
 
-        binding = ContactsBackupFragmentBinding.inflate(inflater, container, false);
+        binding = BackupFragmentBinding.inflate(inflater, container, false);
         View view = binding.getRoot();
 
         setHasOptionsMenu(true);
@@ -131,7 +131,7 @@ public class ContactsBackupFragment extends FileFragment implements DatePickerDi
         ActionBar actionBar = contactsPreferenceActivity != null ? contactsPreferenceActivity.getSupportActionBar() : null;
 
         if (actionBar != null) {
-            ThemeToolbarUtils.setColoredTitle(actionBar, getString(R.string.actionbar_contacts), getContext());
+            ThemeToolbarUtils.setColoredTitle(actionBar, getString(R.string.backup_title), getContext());
 
             actionBar.setDisplayHomeAsUpEnabled(true);
             ThemeToolbarUtils.tintBackButton(actionBar, getContext());

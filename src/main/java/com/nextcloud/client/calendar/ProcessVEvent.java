@@ -20,6 +20,7 @@
 package com.nextcloud.client.calendar;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.res.Resources;
@@ -32,7 +33,10 @@ import android.provider.CalendarContract.Reminders;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 
+import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.R;
+import com.owncloud.android.lib.common.utils.Log_OC;
+import com.owncloud.android.utils.DisplayUtils;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.ComponentList;
@@ -43,6 +47,7 @@ import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VAlarm;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.parameter.FbType;
+import net.fortuna.ical4j.model.parameter.Related;
 import net.fortuna.ical4j.model.property.Action;
 import net.fortuna.ical4j.model.property.DateProperty;
 import net.fortuna.ical4j.model.property.Duration;
@@ -50,19 +55,16 @@ import net.fortuna.ical4j.model.property.FreeBusy;
 import net.fortuna.ical4j.model.property.Transp;
 import net.fortuna.ical4j.model.property.Trigger;
 
-import org.sufficientlysecure.ical.ui.MainActivity;
-import org.sufficientlysecure.ical.ui.RemindersDialog;
-import org.sufficientlysecure.ical.ui.dialogs.RunnableWithProgress;
-import org.sufficientlysecure.ical.util.Log;
-
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-import ezvcard.property.Related;
+import javax.inject.Inject;
+
 
 @SuppressLint("NewApi")
-public class ProcessVEvent extends RunnableWithProgress {
+public class ProcessVEvent {
     private static final String TAG = "ICS_ProcessVEvent";
 
     private static final Duration ONE_DAY = createDuration("P1D");
@@ -74,13 +76,26 @@ public class ProcessVEvent extends RunnableWithProgress {
 
     private final Calendar mICalCalendar;
     private final boolean mIsInserter;
+    private final AndroidCalendar selectedCal;
 
-    private final class Options extends Settings {
+    private Activity activity;
+
+    @Inject AppPreferences preferences;
+
+    // UID generation
+    long mUidMs = 0;
+    String mUidTail = null;
+
+    private final class Options {
         private final List<Integer> mDefaultReminders;
 
-        public Options(MainActivity activity) {
-            super(activity.getSettings().getPreferences());
-            mDefaultReminders = RemindersDialog.getSavedRemindersInMinutes(this);
+        public Options(Activity activity) {
+            mDefaultReminders = new ArrayList<>(); // RemindersDialog.getSavedRemindersInMinutes(this); // TODO check
+            mDefaultReminders.add(0);
+            mDefaultReminders.add(5);
+            mDefaultReminders.add(10);
+            mDefaultReminders.add(30);
+            mDefaultReminders.add(60);
         }
 
         public List<Integer> getReminders(List<Integer> eventReminders) {
@@ -89,25 +104,47 @@ public class ProcessVEvent extends RunnableWithProgress {
             }
             return mDefaultReminders;
         }
+
+        public boolean getKeepUids() {
+            return true; // upstream this is a setting // TODO check if we need to also have this as a setting
+        }
+
+        private boolean getImportReminders() {
+            return true; // upstream this is a setting // TODO check if we need to also have this as a setting
+        }
+
+        private boolean getGlobalUids() {
+            return false; // upstream this is a setting // TODO check if we need to also have this as a setting
+        }
+
+        private boolean getTestFileSupport() {
+            return false; // upstream this is a setting // TODO check if we need to also have this as a setting
+        }
+
+        public DuplicateHandlingEnum getDuplicateHandling() {
+//            return DuplicateHandlingEnum.values()[getEnumInt(PREF_DUPLICATE_HANDLING, 0)]; 
+            return DuplicateHandlingEnum.values()[0]; // TODO is option needed?
+        }
+
+//        private int getEnumInt(final String key, final int def) {
+//            return Integer.parseInt(getString(key, String.valueOf(def)));
+//        }
     }
 
-    public ProcessVEvent(MainActivity activity, Calendar iCalCalendar, boolean isInserter) {
-        super(activity, R.string.processing_entries, true);
+    public ProcessVEvent(Activity activity, Calendar iCalCalendar, AndroidCalendar selectedCal, boolean isInserter) {
+        this.activity = activity;
         mICalCalendar = iCalCalendar;
+        this.selectedCal = selectedCal;
         mIsInserter = isInserter;
     }
 
-    @Override
+    // TODO how to run?
     protected void run() throws Exception {
-        final MainActivity activity = getActivity();
         final Options options = new Options(activity);
-        final AndroidCalendar selectedCal = activity.getSelectedCalendar();
-
         List<Integer> reminders = new ArrayList<>();
 
         ComponentList events = mICalCalendar.getComponents(VEvent.VEVENT);
 
-        setMax(events.size());
         ContentResolver resolver = activity.getContentResolver();
         int numDel = 0;
         int numIns = 0;
@@ -116,22 +153,18 @@ public class ProcessVEvent extends RunnableWithProgress {
         ContentValues cAlarm = new ContentValues();
         cAlarm.put(Reminders.METHOD, Reminders.METHOD_ALERT);
 
-        final Settings.DuplicateHandlingEnum dupes = options.getDuplicateHandling();
+        final DuplicateHandlingEnum dupes = options.getDuplicateHandling();
 
-        Log.i(TAG, (mIsInserter ? "Insert" : "Delete") + " for id " + selectedCal.mIdStr);
-        Log.d(TAG, "Duplication option is " + dupes.ordinal());
+        Log_OC.i(TAG, (mIsInserter ? "Insert" : "Delete") + " for id " + selectedCal.mIdStr);
+        Log_OC.d(TAG, "Duplication option is " + dupes.ordinal());
 
         for (Object ve : events) {
-            incrementProgress();
-
             VEvent e = (VEvent) ve;
-            if (Log.getIsUserEnabled()) {
-                Log.d(TAG, "source event: " + e.toString());
-            }
+            Log_OC.d(TAG, "source event: " + e.toString());
 
             if (e.getRecurrenceId() != null) {
                 // FIXME: Support these edited instances
-                Log.w(TAG, "Ignoring edited instance of a recurring event");
+                Log_OC.w(TAG, "Ignoring edited instance of a recurring event");
                 continue;
             }
 
@@ -143,11 +176,11 @@ public class ProcessVEvent extends RunnableWithProgress {
             boolean mustDelete = !mIsInserter;
 
             // Determine if we need to delete a duplicate event in order to update it
-            if (!mustDelete && dupes != Settings.DuplicateHandlingEnum.DUP_DONT_CHECK) {
+            if (!mustDelete && dupes != DuplicateHandlingEnum.DUP_DONT_CHECK) {
 
                 cur = query(resolver, options, c);
                 while (!mustDelete && cur != null && cur.moveToNext()) {
-                    if (dupes == Settings.DuplicateHandlingEnum.DUP_REPLACE) {
+                    if (dupes == DuplicateHandlingEnum.DUP_REPLACE) {
                         mustDelete = cur.getLong(EVENT_QUERY_CALENDAR_ID_COL) == selectedCal.mId;
                     } else {
                         mustDelete = true; // Replacing all (or ignoring, handled just below)
@@ -155,8 +188,8 @@ public class ProcessVEvent extends RunnableWithProgress {
                 }
 
                 if (mustDelete) {
-                    if (dupes == Settings.DuplicateHandlingEnum.DUP_IGNORE) {
-                        Log.i(TAG, "Avoiding inserting a duplicate event");
+                    if (dupes == DuplicateHandlingEnum.DUP_IGNORE) {
+                        Log_OC.i(TAG, "Avoiding inserting a duplicate event");
                         numDups++;
                         cur.close();
                         continue;
@@ -173,9 +206,9 @@ public class ProcessVEvent extends RunnableWithProgress {
                 while (cur != null && cur.moveToNext()) {
                     long rowCalendarId = cur.getLong(EVENT_QUERY_CALENDAR_ID_COL);
 
-                    if (dupes == Settings.DuplicateHandlingEnum.DUP_REPLACE
+                    if (dupes == DuplicateHandlingEnum.DUP_REPLACE
                         && rowCalendarId != selectedCal.mId) {
-                        Log.i(TAG, "Avoiding deleting duplicate event in calendar " + rowCalendarId);
+                        Log_OC.i(TAG, "Avoiding deleting duplicate event in calendar " + rowCalendarId);
                         continue; // Not in the destination calendar
                     }
 
@@ -185,9 +218,9 @@ public class ProcessVEvent extends RunnableWithProgress {
                     String where = Reminders.EVENT_ID + "=?";
                     resolver.delete(Reminders.CONTENT_URI, where, new String[]{id});
                     if (mIsInserter && rowCalendarId != selectedCal.mId
-                        && dupes == Settings.DuplicateHandlingEnum.DUP_REPLACE_ANY) {
+                        && dupes == DuplicateHandlingEnum.DUP_REPLACE_ANY) {
                         // Must update this event in the calendar this row came from
-                        Log.i(TAG, "Changing calendar: " + rowCalendarId + " to " + insertCalendarId);
+                        Log_OC.i(TAG, "Changing calendar: " + rowCalendarId + " to " + insertCalendarId);
                         insertCalendarId = rowCalendarId;
                     }
                 }
@@ -204,7 +237,7 @@ public class ProcessVEvent extends RunnableWithProgress {
             if (Events.UID_2445 != null && !c.containsKey(Events.UID_2445)) {
                 // Create a UID for this event to use. We create it here so if
                 // exported multiple times it will always have the same id.
-                c.put(Events.UID_2445, activity.generateUid());
+                c.put(Events.UID_2445, generateUid()); // TODO use 
             }
 
             c.put(Events.CALENDAR_ID, insertCalendarId);
@@ -231,21 +264,20 @@ public class ProcessVEvent extends RunnableWithProgress {
 
         selectedCal.mNumEntries += numIns;
         selectedCal.mNumEntries -= numDel;
-        activity.updateNumEntries(selectedCal);
 
         Resources res = activity.getResources();
         int n = mIsInserter ? numIns : numDel;
         String msg = res.getQuantityString(R.plurals.processed_n_entries, n, n) + "\n";
         if (mIsInserter) {
             msg += "\n";
-            if (options.getDuplicateHandling() == Settings.DuplicateHandlingEnum.DUP_DONT_CHECK) {
+            if (options.getDuplicateHandling() == DuplicateHandlingEnum.DUP_DONT_CHECK) {
                 msg += res.getString(R.string.did_not_check_for_dupes);
             } else {
                 msg += res.getQuantityString(R.plurals.found_n_duplicates, numDups, numDups);
             }
         }
 
-        activity.showToast(msg);
+        DisplayUtils.showSnackMessage(activity, msg);
     }
 
     // Munge a VEvent so Android won't reject it, then convert to ContentValues for inserting
@@ -304,7 +336,7 @@ public class ProcessVEvent extends RunnableWithProgress {
                 c.put(Events.ORGANIZER, mailTo.getTo());
                 c.put(Events.GUESTS_CAN_MODIFY, 1); // Ensure we can edit if not the organiser
             } catch (ParseException ignored) {
-                Log.e(TAG, "Failed to parse Organiser URI " + uri.toString());
+                Log_OC.e(TAG, "Failed to parse Organiser URI " + uri.toString());
             }
         }
 
@@ -402,7 +434,7 @@ public class ProcessVEvent extends RunnableWithProgress {
             if (t.getDateTime() != null) {
                 alarmMs = t.getDateTime().getTime(); // Absolute
             } else if (t.getDuration() != null && t.getDuration().isNegative()) {
-                ezvcard.property.Related rel = (ezvcard.property.Related) t.getParameter(Parameter.RELATED);
+                Related rel = (Related) t.getParameter(Parameter.RELATED);
                 if (rel != null && rel == Related.END) {
                     alarmStartMs = e.getEndDate().getDate().getTime();
                 }
@@ -475,17 +507,14 @@ public class ProcessVEvent extends RunnableWithProgress {
     }
 
     private Uri insertAndLog(ContentResolver resolver, Uri uri, ContentValues c, String type) {
-        if (Log.getIsUserEnabled()) {
-            Log.d(TAG, "Inserting " + type + " values: " + c);
-        }
+        Log_OC.d(TAG, "Inserting " + type + " values: " + c);
+
         Uri result = resolver.insert(uri, c);
         if (result == null) {
-            Log.e(TAG, "failed to insert " + type);
-            if (!Log.getIsUserEnabled()) {
-                Log.e(TAG, "failed " + type + " values: " + c); // Not already logged, dump now
-            }
+            Log_OC.e(TAG, "failed to insert " + type);
+            Log_OC.e(TAG, "failed " + type + " values: " + c); // Not already logged, dump now
         } else {
-            Log.d(TAG, "Insert " + type + " returned " + result.toString());
+            Log_OC.d(TAG, "Insert " + type + " returned " + result.toString());
         }
         return result;
     }
@@ -549,12 +578,12 @@ public class ProcessVEvent extends RunnableWithProgress {
         }
 
         if (!expected.equals(got)) {
-            Log.e(TAG, "    " + keyValue + " -> FAILED");
-            Log.e(TAG, "    values: " + c);
+            Log_OC.e(TAG, "    " + keyValue + " -> FAILED");
+            Log_OC.e(TAG, "    values: " + c);
             String error = "Test " + testName + " FAILED, expected '" + keyValue + "', got '" + got + "'";
             throw new RuntimeException(error);
         }
-        Log.i(TAG, "    " + keyValue + " -> PASSED");
+        Log_OC.i(TAG, "    " + keyValue + " -> PASSED");
     }
 
     private void processEventTests(VEvent e, ContentValues c, List<Integer> reminders) {
@@ -565,7 +594,7 @@ public class ProcessVEvent extends RunnableWithProgress {
         }
 
         // This is a test event. Verify it using the embedded meta data.
-        Log.i(TAG, "Processing test case " + testName.getValue() + "...");
+        Log_OC.i(TAG, "Processing test case " + testName.getValue() + "...");
 
         String reminderValues = "";
         String sep = "";
@@ -584,11 +613,30 @@ public class ProcessVEvent extends RunnableWithProgress {
                 case "X-TEST-MIN-VERSION":
                     final int ver = Integer.parseInt(p.getValue());
                     if (android.os.Build.VERSION.SDK_INT < ver) {
-                        Log.e(TAG, "    -> SKIPPED (MIN-VERSION < " + ver + ")");
+                        Log_OC.e(TAG, "    -> SKIPPED (MIN-VERSION < " + ver + ")");
                         return;
                     }
                     break;
             }
         }
+    }
+
+    // TODO move this to some common place
+    private String generateUid() {
+        // Generated UIDs take the form <ms>-<uuid>@nextcloud.com.
+        if (mUidTail == null) {
+            String uidPid = preferences.getUidPid();
+            if (uidPid.length() == 0) {
+                uidPid = UUID.randomUUID().toString().replace("-", "");
+                preferences.setUidPid(uidPid);
+            }
+            mUidTail = uidPid + "@nextcloud.com";
+        }
+
+        mUidMs = Math.max(mUidMs, System.currentTimeMillis());
+        String uid = mUidMs + mUidTail;
+        mUidMs++;
+
+        return uid;
     }
 }

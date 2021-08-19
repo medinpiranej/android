@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Nextcloud Android client application
 
   Copyright (C) 2017 Tobias Kaminsky
@@ -20,6 +19,7 @@
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/contacts_linear_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -27,53 +27,79 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="@dimen/standard_margin"
         android:orientation="vertical">
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/contacts_automatic_backup"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="@dimen/standard_margin"
-            android:text="@string/contacts_automatic_backup"
+            android:text="Data to back up" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/contacts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="Contacts"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:textColor="@color/text_color" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/calendar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="Calendar"
             android:textAppearance="?android:attr/textAppearanceMedium"
             android:textColor="@color/text_color" />
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Backup settings" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/contacts_automatic_backup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Daily backup"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textColor="@color/text_color" />
 
             <TextView
                 android:id="@+id/contacts_last_backup"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="@dimen/standard_margin"
                 android:layout_weight="1"
                 android:text="@string/contacts_last_backup"
                 android:textAppearance="?android:attr/textAppearanceMedium"
-                android:textColor="@color/text_color"/>
+                android:textColor="@color/text_color" />
 
             <TextView
                 android:id="@+id/contacts_last_backup_timestamp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="@dimen/standard_margin"
                 android:layout_weight="1"
                 android:gravity="end"
                 android:text="@string/contacts_preference_backup_never"
-                android:textAppearance="?android:attr/textAppearanceMedium"/>
+                android:textAppearance="?android:attr/textAppearanceMedium" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_margin="@dimen/standard_margin"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/contacts_backup_now"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="@dimen/standard_margin"
                 android:layout_weight="1"
                 android:text="@string/contacts_backup_button"
                 android:theme="@style/Button.Primary"
@@ -81,14 +107,15 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/contacts_datepicker"
+                style="@style/OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="@dimen/standard_margin"
+                android:layout_marginLeft="@dimen/standard_margin"
                 android:layout_weight="1"
-                android:text="@string/contacts_preference_choose_date"
-                android:theme="@style/Button"
+                android:text="@string/restore_backup"
                 android:visibility="gone"
-                app:cornerRadius="@dimen/button_corner_radius" />
+                app:cornerRadius="@dimen/button_corner_radius"
+                tools:visibility="visible" />
         </LinearLayout>
 
     </LinearLayout>
