@@ -32,7 +32,7 @@ import com.owncloud.android.R;
 import com.owncloud.android.datamodel.OCFile;
 import com.owncloud.android.ui.fragment.FileFragment;
 import com.owncloud.android.ui.fragment.contactsbackup.BackupFragment;
-import com.owncloud.android.ui.fragment.contactsbackup.ContactListFragment;
+import com.owncloud.android.ui.fragment.contactsbackup.BackupListFragment;
 
 import javax.inject.Inject;
 
@@ -110,7 +110,7 @@ public class ContactsPreferenceActivity extends FileActivity implements FileFrag
             } else {
                 OCFile file = intent.getParcelableExtra(EXTRA_FILE);
                 User user = intent.getParcelableExtra(EXTRA_USER);
-                ContactListFragment contactListFragment = ContactListFragment.newInstance(file, user);
+                BackupListFragment contactListFragment = BackupListFragment.newInstance(file, user);
                 transaction.add(R.id.frame_container, contactListFragment);
             }
             transaction.commit();
@@ -139,7 +139,7 @@ public class ContactsPreferenceActivity extends FileActivity implements FileFrag
 
     @Override
     public void onBackPressed() {
-        if (getSupportFragmentManager().findFragmentByTag(ContactListFragment.TAG) != null) {
+        if (getSupportFragmentManager().findFragmentByTag(BackupListFragment.TAG) != null) {
             getSupportFragmentManager().popBackStack(BACKUP_TO_LIST, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         } else {
             finish();

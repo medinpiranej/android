@@ -19,7 +19,6 @@
 package com.nextcloud.client.calendar;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -31,20 +30,28 @@ import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.net.Uri;
-import android.os.Environment;
 import android.provider.CalendarContract;
 import android.provider.CalendarContract.Events;
 import android.provider.CalendarContract.Reminders;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
 import android.text.format.DateUtils;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
 
+import com.nextcloud.client.account.User;
+import com.nextcloud.client.di.Injectable;
+import com.nextcloud.client.files.downloader.PostUploadAction;
+import com.nextcloud.client.files.downloader.Request;
+import com.nextcloud.client.files.downloader.TransferManagerConnection;
+import com.nextcloud.client.files.downloader.UploadRequest;
+import com.nextcloud.client.files.downloader.UploadTrigger;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.R;
+import com.owncloud.android.datamodel.OCFile;
+import com.owncloud.android.files.services.NameCollisionPolicy;
 import com.owncloud.android.lib.common.utils.Log_OC;
-import com.owncloud.android.utils.DisplayUtils;
 
 import net.fortuna.ical4j.data.CalendarOutputter;
 import net.fortuna.ical4j.model.Calendar;
@@ -92,10 +99,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import javax.inject.Inject;
-
 @SuppressLint("NewApi")
-public class SaveCalendar {
+public class SaveCalendar implements Injectable {
     private static final String TAG = "ICS_SaveCalendar";
 
     private final PropertyFactoryImpl mPropertyFactory = PropertyFactoryImpl.getInstance();
@@ -103,10 +108,10 @@ public class SaveCalendar {
     private final Set<TimeZone> mInsertedTimeZones = new HashSet<>();
     private final Set<String> mFailedOrganisers = new HashSet<>();
     boolean mAllCols;
-    private final Activity activity;
+    private final Context activity;
     private final AndroidCalendar selectedCal;
-
-    @Inject AppPreferences preferences;
+    private final AppPreferences preferences;
+    private final User user;
 
     // UID generation
     long mUidMs = 0;
@@ -128,13 +133,14 @@ public class SaveCalendar {
         Reminders.MINUTES, Reminders.METHOD
     };
 
-    public SaveCalendar(Activity activity, AndroidCalendar calendar) {
-        this.activity = activity;
+    public SaveCalendar(Context activity, AndroidCalendar calendar, AppPreferences preferences, User user) {
+        this.activity = activity; // TODO rename
         this.selectedCal = calendar;
+        this.preferences = preferences;
+        this.user = user;
     }
 
-    // TODO how to run?
-    protected void run() throws Exception {
+    public void start() throws Exception {
         mInsertedTimeZones.clear();
         mFailedOrganisers.clear();
         mAllCols = false; // settings.getQueryAllColumns(); // TODO remove: option, default is false
@@ -145,18 +151,18 @@ public class SaveCalendar {
             lastName = suggestedName;
         }
 
-        String file = getFile(lastName, suggestedName);
+        String file = suggestedName; // TODO simplify
         if (TextUtils.isEmpty(file)) {
             return;
         }
 
-        if (!file.endsWith(".ics")) {
-            file += ".ics";
-        }
+        file = suggestedName + "_" +
+            DateFormat.format("yyyy-MM-dd_HH-mm-ss", java.util.Calendar.getInstance()).toString() +
+            ".ics";
 
-        String fileName = Environment.getExternalStorageDirectory() + File.separator + file;
+        File fileName = new File(activity.getCacheDir(), file); // todo rename
 
-        Log_OC.i(TAG, "Save id " + selectedCal.mIdStr + " to file " + fileName);
+        Log_OC.i(TAG, "Save id " + selectedCal.mIdStr + " to file " + fileName.getAbsolutePath());
 
         String name = activity.getPackageName();
         String ver;
@@ -172,6 +178,7 @@ public class SaveCalendar {
         cal.getProperties().add(Version.VERSION_2_0);
         cal.getProperties().add(Method.PUBLISH);
         cal.getProperties().add(CalScale.GREGORIAN);
+
         if (selectedCal.mTimezone != null) {
             // We don't write any events with floating times, but export this
             // anyway so the default timezone for new events is correct when
@@ -200,7 +207,10 @@ public class SaveCalendar {
         if (numberOfCreatedUids > 0) {
             msg += "\n" + res.getQuantityString(R.plurals.created_n_uids_to, numberOfCreatedUids, numberOfCreatedUids);
         }
-        DisplayUtils.showSnackMessage(activity, msg);
+
+        // TODO replace DisplayUtils.showSnackMessage(activity, msg);
+
+        upload(fileName);
     }
 
     private int ensureUids(Context activity, ContentResolver resolver, AndroidCalendar cal) {
@@ -316,11 +326,9 @@ public class SaveCalendar {
 
     private String getFile(final String previousFile, final String suggestedFile) {
         final String[] result = new String[1];
-        activity.runOnUiThread(new Runnable() {
-            public void run() {
-                getFileImpl(previousFile, suggestedFile, result);
-            }
-        });
+
+        getFileImpl(previousFile, suggestedFile, result);
+
         while (result[0] == null) {
             try {
                 Thread.sleep(30);
@@ -614,5 +622,23 @@ public class SaveCalendar {
         mUidMs++;
 
         return uid;
+    }
+
+    private void upload(File file) {
+        String backupFolder = activity.getResources().getString(R.string.calendar_backup_folder)
+            + OCFile.PATH_SEPARATOR;
+
+        Request request = new UploadRequest.Builder(user, file.getAbsolutePath(), backupFolder + file.getName())
+            .setFileSize(file.length())
+            .setNameConflicPolicy(NameCollisionPolicy.RENAME)
+            .setCreateRemoteFolder(true)
+            .setTrigger(UploadTrigger.USER)
+            .setPostAction(PostUploadAction.MOVE_TO_APP)
+            .setRequireWifi(false)
+            .setRequireCharging(false)
+            .build();
+
+        TransferManagerConnection connection = new TransferManagerConnection(activity, user);
+        connection.enqueue(request);
     }
 }

@@ -24,7 +24,7 @@ import com.owncloud.android.AbstractIT
 import com.owncloud.android.R
 import com.owncloud.android.datamodel.OCFile
 import com.owncloud.android.ui.activity.ContactsPreferenceActivity
-import com.owncloud.android.ui.fragment.contactsbackup.ContactListFragment
+import com.owncloud.android.ui.fragment.contactsbackup.BackupListFragment
 import com.owncloud.android.utils.ScreenshotTest
 import org.junit.Rule
 import org.junit.Test
@@ -33,17 +33,57 @@ class ContactListFragmentIT : AbstractIT() {
     @get:Rule
     val testActivityRule = IntentsTestRule(ContactsPreferenceActivity::class.java, true, false)
 
-    val file = OCFile("/", "00000001")
-
     @Test
     @ScreenshotTest
     fun showContactListFragmentLoading() {
         val sut = testActivityRule.launchActivity(null)
+        val file = OCFile("/", "00000001")
         val transaction = sut.supportFragmentManager.beginTransaction()
-        transaction.replace(R.id.frame_container, ContactListFragment.newInstance(file, user))
+
+        transaction.replace(R.id.frame_container, BackupListFragment.newInstance(file, user))
         transaction.commit()
 
         waitForIdleSync()
         screenshot(sut)
+
+        longSleep()
+    }
+
+    @Test
+    @ScreenshotTest
+    fun showContactList() {
+        val sut = testActivityRule.launchActivity(null)
+        val transaction = sut.supportFragmentManager.beginTransaction()
+        val file = getFile("vcard.vcf")
+        val ocFile = OCFile("/vcard.vcf", "00000002")
+        ocFile.storagePath = file.absolutePath
+        ocFile.mimeType = "text/vcard"
+
+        transaction.replace(R.id.frame_container, BackupListFragment.newInstance(ocFile, user))
+        transaction.commit()
+
+        waitForIdleSync()
+        screenshot(sut)
+
+        longSleep()
+    }
+
+    @Test
+    @ScreenshotTest
+    fun showCalendarList() {
+        val sut = testActivityRule.launchActivity(null)
+        val transaction = sut.supportFragmentManager.beginTransaction()
+        val file = getFile("calendar.ics")
+        val ocFile = OCFile("/calendar.ics", "00000003")
+        ocFile.storagePath = file.absolutePath
+        ocFile.mimeType = "text/calendar"
+
+        transaction.replace(R.id.frame_container, BackupListFragment.newInstance(ocFile, user))
+        transaction.commit()
+
+        waitForIdleSync()
+        screenshot(sut)
+
+        longSleep()
     }
 }

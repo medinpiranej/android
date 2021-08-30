@@ -18,9 +18,9 @@
   License along with this program. If not, see <http://www.gnu.org/licenses/>.
 -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:tools="http://schemas.android.com/tools"
     android:animateLayoutChanges="true"
     android:orientation="vertical">
 
@@ -28,6 +28,32 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/calendars_headline"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/standard_margin"
+            android:layout_marginTop="@dimen/standard_margin"
+            android:layout_marginEnd="@dimen/standard_margin"
+            android:text="@string/calendars" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/calendar_recyclerview"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:choiceMode="multipleChoice"
+            tools:listitem="@layout/contactlist_list_item" />
+
+        <TextView
+            android:id="@+id/contacts_headline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/standard_margin"
+            android:layout_marginTop="@dimen/standard_margin"
+            android:layout_marginEnd="@dimen/standard_margin"
+            android:text="@string/contacts" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/contactlist_recyclerview"
@@ -48,15 +74,15 @@
             <ImageView
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/uploader_list_separator_height"
-                android:src="@drawable/uploader_list_separator"
-                android:contentDescription="@null"/>
+                android:contentDescription="@null"
+                android:src="@drawable/uploader_list_separator" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/contactlist_restore_selected"
                 style="@style/Button.Borderless"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/contaclist_restore_selected" />
+                android:text="@string/restore_selected" />
 
         </LinearLayout>
     </LinearLayout>
@@ -68,14 +94,23 @@
         android:orientation="vertical">
 
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
+
         <include layout="@layout/contactlist_list_item_shimmer" />
     </LinearLayout>
 </RelativeLayout>

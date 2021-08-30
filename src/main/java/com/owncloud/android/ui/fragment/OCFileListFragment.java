@@ -52,6 +52,7 @@ import com.nextcloud.client.account.User;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.device.DeviceInfo;
 import com.nextcloud.client.di.Injectable;
+import com.nextcloud.client.jobs.BackgroundJobManager;
 import com.nextcloud.client.network.ClientFactory;
 import com.nextcloud.client.preferences.AppPreferences;
 import com.owncloud.android.MainApp;
@@ -181,6 +182,7 @@ public class OCFileListFragment extends ExtendedListFragment implements
     @Inject UserAccountManager accountManager;
     @Inject ClientFactory clientFactory;
     protected FileFragment.ContainerActivity mContainerActivity;
+    @Inject BackgroundJobManager backgroundJobManager;
 
     protected OCFile mFile;
     protected OCFileListAdapter mAdapter;
@@ -434,12 +436,9 @@ public class OCFileListFragment extends ExtendedListFragment implements
 
         if (mFabMain != null) { // is not available in FolderPickerActivity
             ThemeFabUtils.colorFloatingActionButton(mFabMain, R.drawable.ic_plus, requireContext());
-            mFabMain.setOnClickListener(v -> new OCFileListBottomSheetDialog(activity,
-                                                                             this,
-                                                                             deviceInfo,
-                                                                             accountManager.getUser(),
-                                                                             getCurrentFile())
-                .show());
+            mFabMain.setOnClickListener(c -> {
+                backgroundJobManager.startImmediateCalendarBackup(activity.getUser().get());
+            });
         }
     }
 

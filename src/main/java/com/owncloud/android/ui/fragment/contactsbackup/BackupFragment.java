@@ -24,7 +24,6 @@ import android.Manifest;
 import android.accounts.Account;
 import android.app.DatePickerDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -34,8 +33,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
 import android.widget.DatePicker;
+import android.widget.Toast;
 
-import com.google.android.material.snackbar.Snackbar;
 import com.nextcloud.client.account.User;
 import com.nextcloud.client.di.Injectable;
 import com.nextcloud.client.jobs.BackgroundJobManager;
@@ -51,17 +50,17 @@ import com.owncloud.android.ui.activity.ContactsPreferenceActivity;
 import com.owncloud.android.ui.activity.SettingsActivity;
 import com.owncloud.android.ui.fragment.FileFragment;
 import com.owncloud.android.utils.DisplayUtils;
+import com.owncloud.android.utils.MimeTypeUtil;
 import com.owncloud.android.utils.PermissionUtil;
 import com.owncloud.android.utils.theme.ThemeButtonUtils;
 import com.owncloud.android.utils.theme.ThemeCheckableUtils;
 import com.owncloud.android.utils.theme.ThemeColorUtils;
-import com.owncloud.android.utils.theme.ThemeSnackbarUtils;
 import com.owncloud.android.utils.theme.ThemeToolbarUtils;
 import com.owncloud.android.utils.theme.ThemeUtils;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
@@ -93,7 +92,9 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
 
     private DatePickerDialog datePickerDialog;
 
-    private CompoundButton.OnCheckedChangeListener onCheckedChangeListener;
+    private CompoundButton.OnCheckedChangeListener dailyBackupCheckedChangeListener;
+    private CompoundButton.OnCheckedChangeListener contactsCheckedListener;
+    private CompoundButton.OnCheckedChangeListener calendarCheckedListener;
     private ArbitraryDataProvider arbitraryDataProvider;
     private Account account;
     private boolean showSidebar = true;
@@ -104,6 +105,8 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
         bundle.putBoolean(ARG_SHOW_SIDEBAR, showSidebar);
         fragment.setArguments(bundle);
         return fragment;
+
+        // TODO reload calendar/contact folder
     }
 
     @Override
@@ -140,42 +143,62 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
         arbitraryDataProvider = new ArbitraryDataProvider(getContext().getContentResolver());
 
         ThemeCheckableUtils.tintSwitch(
-            binding.contactsAutomaticBackup, ThemeColorUtils.primaryAccentColor(getContext()));
-        binding.contactsAutomaticBackup.setChecked(
+            binding.contacts, ThemeColorUtils.primaryAccentColor(getContext()));
+        ThemeCheckableUtils.tintSwitch(
+            binding.calendar, ThemeColorUtils.primaryAccentColor(getContext()));
+        ThemeCheckableUtils.tintSwitch(
+            binding.dailyBackup, ThemeColorUtils.primaryAccentColor(getContext()));
+        binding.dailyBackup.setChecked(
             arbitraryDataProvider.getBooleanValue(user, PREFERENCE_CONTACTS_AUTOMATIC_BACKUP));
 
-        onCheckedChangeListener = (buttonView, isChecked) -> {
+        dailyBackupCheckedChangeListener = (buttonView, isChecked) -> {
             if (checkAndAskForContactsReadPermission()) {
                 setAutomaticBackup(isChecked);
             }
         };
 
-        binding.contactsAutomaticBackup.setOnCheckedChangeListener(onCheckedChangeListener);
-        binding.contactsBackupNow.setOnClickListener(v -> backupContacts());
+        contactsCheckedListener = (buttonView, isChecked) -> {
+            if (checkAndAskForContactsReadPermission()) {
+                binding.backupNow.setEnabled(checkBackupNowPermission());
+            }
+        };
+        binding.contacts.setOnCheckedChangeListener(contactsCheckedListener);
+
+        calendarCheckedListener = (buttonView, isChecked) -> checkAndAskForCalendarReadPermission();
+        binding.calendar.setOnCheckedChangeListener(calendarCheckedListener);
+
+        binding.dailyBackup.setOnCheckedChangeListener(dailyBackupCheckedChangeListener);
+        binding.backupNow.setOnClickListener(v -> backup());
+        binding.backupNow.setEnabled(checkBackupNowPermission());
         binding.contactsDatepicker.setOnClickListener(v -> openCleanDate());
 
         // display last backup
         Long lastBackupTimestamp = arbitraryDataProvider.getLongValue(user, PREFERENCE_CONTACTS_LAST_BACKUP);
 
         if (lastBackupTimestamp == -1) {
-            binding.contactsLastBackupTimestamp.setText(R.string.contacts_preference_backup_never);
+            binding.lastBackupWithDate.setVisibility(View.GONE);
         } else {
-            binding.contactsLastBackupTimestamp.setText(
-                DisplayUtils.getRelativeTimestamp(contactsPreferenceActivity, lastBackupTimestamp));
+            binding.lastBackupWithDate.setText(
+                String.format(getString(R.string.last_backup),
+                              DisplayUtils.getRelativeTimestamp(contactsPreferenceActivity, lastBackupTimestamp)));
         }
 
         if (savedInstanceState != null && savedInstanceState.getBoolean(KEY_CALENDAR_PICKER_OPEN, false)) {
             if (savedInstanceState.getInt(KEY_CALENDAR_YEAR, -1) != -1 &&
-                    savedInstanceState.getInt(KEY_CALENDAR_MONTH, -1) != -1 &&
-                    savedInstanceState.getInt(KEY_CALENDAR_DAY, -1) != -1) {
+                savedInstanceState.getInt(KEY_CALENDAR_MONTH, -1) != -1 &&
+                savedInstanceState.getInt(KEY_CALENDAR_DAY, -1) != -1) {
                 selectedDate = new Date(savedInstanceState.getInt(KEY_CALENDAR_YEAR),
-                        savedInstanceState.getInt(KEY_CALENDAR_MONTH), savedInstanceState.getInt(KEY_CALENDAR_DAY));
+                                        savedInstanceState.getInt(KEY_CALENDAR_MONTH), savedInstanceState.getInt(KEY_CALENDAR_DAY));
             }
             calendarPickerOpen = true;
         }
 
-        ThemeButtonUtils.colorPrimaryButton(binding.contactsBackupNow, getContext());
-        ThemeButtonUtils.colorPrimaryButton(binding.contactsDatepicker, getContext());
+        ThemeButtonUtils.colorPrimaryButton(binding.backupNow, getContext());
+        ThemeButtonUtils.themeBorderlessButton(binding.contactsDatepicker);
+
+        int primaryAccentColor = ThemeColorUtils.primaryAccentColor(getContext());
+        binding.dataToBackUpTitle.setTextColor(primaryAccentColor);
+        binding.backupSettingsTitle.setTextColor(primaryAccentColor);
 
         return view;
     }
@@ -282,44 +305,63 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
                 if (Manifest.permission.READ_CONTACTS.equalsIgnoreCase(permissions[index])) {
                     if (grantResults[index] >= 0) {
                         setAutomaticBackup(true);
-                    } else {
-                        binding.contactsAutomaticBackup.setOnCheckedChangeListener(null);
-                        binding.contactsAutomaticBackup.setChecked(false);
-                        binding.contactsAutomaticBackup.setOnCheckedChangeListener(onCheckedChangeListener);
+                        break;
                     }
 
-                    break;
+                    binding.contacts.setOnCheckedChangeListener(null);
+                    binding.contacts.setChecked(false);
+                    binding.contacts.setOnCheckedChangeListener(contactsCheckedListener);
                 }
             }
         }
 
-        if (requestCode == PermissionUtil.PERMISSIONS_READ_CONTACTS_MANUALLY) {
+        if (requestCode == PermissionUtil.PERMISSIONS_READ_CALENDAR_AUTOMATIC) {
             for (int index = 0; index < permissions.length; index++) {
-                if (Manifest.permission.READ_CONTACTS.equalsIgnoreCase(permissions[index])) {
+                if (Manifest.permission.READ_CALENDAR.equalsIgnoreCase(permissions[index])) {
                     if (grantResults[index] >= 0) {
-                        startContactsBackupJob();
+                        setAutomaticBackup(true);
+                        break;
                     }
-
-                    break;
                 }
+
+                binding.calendar.setOnCheckedChangeListener(null);
+                binding.calendar.setChecked(false);
+                binding.calendar.setOnCheckedChangeListener(calendarCheckedListener);
             }
         }
+
+        binding.backupNow.setEnabled(checkBackupNowPermission());
     }
 
-    public void backupContacts() {
+    public void backup() {
         if (checkAndAskForContactsReadPermission()) {
             startContactsBackupJob();
         }
+
+        if (checkAndAskForCalendarReadPermission()) {
+            startCalendarBackupJob();
+        }
+
+        DisplayUtils.showSnackMessage(requireView().findViewById(R.id.contacts_linear_layout),
+                                      R.string.contacts_preferences_backup_scheduled);
     }
 
     private void startContactsBackupJob() {
-        ContactsPreferenceActivity activity = (ContactsPreferenceActivity)getActivity();
+        ContactsPreferenceActivity activity = (ContactsPreferenceActivity) getActivity();
         if (activity != null) {
             Optional<User> optionalUser = activity.getUser();
             if (optionalUser.isPresent()) {
                 backgroundJobManager.startImmediateContactsBackup(optionalUser.get());
-                DisplayUtils.showSnackMessage(getView().findViewById(R.id.contacts_linear_layout),
-                                              R.string.contacts_preferences_backup_scheduled);
+            }
+        }
+    }
+
+    private void startCalendarBackupJob() {
+        ContactsPreferenceActivity activity = (ContactsPreferenceActivity) getActivity();
+        if (activity != null) {
+            Optional<User> optionalUser = activity.getUser();
+            if (optionalUser.isPresent()) {
+                backgroundJobManager.startImmediateCalendarBackup(optionalUser.get());
             }
         }
     }
@@ -337,12 +379,14 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
         User user = optionalUser.get();
         if (enabled) {
             backgroundJobManager.schedulePeriodicContactsBackup(user);
+            backgroundJobManager.schedulePeriodicCalendarBackup(user);
         } else {
             backgroundJobManager.cancelPeriodicContactsBackup(user);
+            backgroundJobManager.cancelPeriodicCalendarBackup(user);
         }
 
         arbitraryDataProvider.storeOrUpdateKeyValue(account.name, PREFERENCE_CONTACTS_AUTOMATIC_BACKUP,
-                String.valueOf(enabled));
+                                                    String.valueOf(enabled));
     }
 
     private boolean checkAndAskForContactsReadPermission() {
@@ -352,30 +396,30 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
         if (PermissionUtil.checkSelfPermission(contactsPreferenceActivity, Manifest.permission.READ_CONTACTS)) {
             return true;
         } else {
-            // Check if we should show an explanation
-            if (PermissionUtil.shouldShowRequestPermissionRationale(contactsPreferenceActivity,
-                    android.Manifest.permission.READ_CONTACTS)) {
-                // Show explanation to the user and then request permission
-                Snackbar snackbar = DisplayUtils.createSnackbar(
-                        getView().findViewById(R.id.contacts_linear_layout),
-                        R.string.contacts_read_permission, Snackbar.LENGTH_INDEFINITE)
-                        .setAction(R.string.common_ok, v -> requestPermissions(
-                                new String[]{Manifest.permission.READ_CONTACTS},
-                                PermissionUtil.PERMISSIONS_READ_CONTACTS_AUTOMATIC)
-                        );
-
-                ThemeSnackbarUtils.colorSnackbar(contactsPreferenceActivity, snackbar);
-
-                snackbar.show();
-
-                return false;
-            } else {
-                // No explanation needed, request the permission.
-                requestPermissions(new String[]{Manifest.permission.READ_CONTACTS},
-                        PermissionUtil.PERMISSIONS_READ_CONTACTS_AUTOMATIC);
-                return false;
-            }
+            // No explanation needed, request the permission.
+            requestPermissions(new String[]{Manifest.permission.READ_CONTACTS},
+                               PermissionUtil.PERMISSIONS_READ_CONTACTS_AUTOMATIC);
+            return false;
         }
+    }
+
+    private boolean checkAndAskForCalendarReadPermission() {
+        final ContactsPreferenceActivity contactsPreferenceActivity = (ContactsPreferenceActivity) getActivity();
+
+        // check permissions
+        if (PermissionUtil.checkSelfPermission(contactsPreferenceActivity, Manifest.permission.READ_CALENDAR)) {
+            return true;
+        } else {
+            // No explanation needed, request the permission.
+            requestPermissions(new String[]{Manifest.permission.READ_CALENDAR},
+                               PermissionUtil.PERMISSIONS_READ_CALENDAR_AUTOMATIC);
+            return false;
+        }
+    }
+
+    private boolean checkBackupNowPermission() {
+        return PermissionUtil.checkSelfPermission(getContext(), Manifest.permission.READ_CALENDAR) ||
+            PermissionUtil.checkSelfPermission(getContext(), Manifest.permission.READ_CONTACTS);
     }
 
     public void openCleanDate() {
@@ -385,25 +429,26 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
     public void openDate(@Nullable Date savedDate) {
         final ContactsPreferenceActivity contactsPreferenceActivity = (ContactsPreferenceActivity) getActivity();
 
-        String backupFolderString = getResources().getString(R.string.contacts_backup_folder) + OCFile.PATH_SEPARATOR;
-        OCFile backupFolder = contactsPreferenceActivity.getStorageManager().getFileByPath(backupFolderString);
+        if (contactsPreferenceActivity == null) {
+            Toast.makeText(getContext(), getString(R.string.error_choosing_date), Toast.LENGTH_LONG).show();
+            return;
+        }
 
-        List<OCFile> backupFiles = contactsPreferenceActivity.getStorageManager().getFolderContent(backupFolder,
-                false);
+        String contactsBackupFolderString =
+            getResources().getString(R.string.contacts_backup_folder) + OCFile.PATH_SEPARATOR;
+        String calendarBackupFolderString =
+            getResources().getString(R.string.calendar_backup_folder) + OCFile.PATH_SEPARATOR;
 
-        Collections.sort(backupFiles, new Comparator<OCFile>() {
-            @Override
-            public int compare(OCFile o1, OCFile o2) {
-                if (o1.getModificationTimestamp() == o2.getModificationTimestamp()) {
-                    return 0;
-                }
+        FileDataStorageManager storageManager = contactsPreferenceActivity.getStorageManager();
 
-                if (o1.getModificationTimestamp() > o2.getModificationTimestamp()) {
-                    return 1;
-                } else {
-                    return -1;
-                }
-            }
+        OCFile contactsBackupFolder = storageManager.getFileByDecryptedRemotePath(contactsBackupFolderString);
+        OCFile calendarBackupFolder = storageManager.getFileByDecryptedRemotePath(calendarBackupFolderString);
+
+        List<OCFile> backupFiles = storageManager.getFolderContent(contactsBackupFolder, false);
+        backupFiles.addAll(storageManager.getFolderContent(calendarBackupFolder, false));
+
+        Collections.sort(backupFiles, (o1, o2) -> {
+            return Long.compare(o1.getModificationTimestamp(), o2.getModificationTimestamp());
         });
 
         Calendar cal = Calendar.getInstance();
@@ -427,12 +472,7 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
                     .getModificationTimestamp());
             datePickerDialog.getDatePicker().setMinDate(backupFiles.get(0).getModificationTimestamp());
 
-            datePickerDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                @Override
-                public void onDismiss(DialogInterface dialog) {
-                    selectedDate = null;
-                }
-            });
+            datePickerDialog.setOnDismissListener(dialog -> selectedDate = null);
 
             datePickerDialog.setTitle("");
             datePickerDialog.show();
@@ -480,12 +520,26 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
     @Override
     public void onDateSet(DatePicker view, int year, int month, int dayOfMonth) {
         final ContactsPreferenceActivity contactsPreferenceActivity = (ContactsPreferenceActivity) getActivity();
+
+        if (contactsPreferenceActivity == null) {
+            Toast.makeText(getContext(), getString(R.string.error_choosing_date), Toast.LENGTH_LONG).show();
+            return;
+        }
+
         selectedDate = new Date(year, month, dayOfMonth);
 
-        String backupFolderString = getResources().getString(R.string.contacts_backup_folder) + OCFile.PATH_SEPARATOR;
-        OCFile backupFolder = contactsPreferenceActivity.getStorageManager().getFileByPath(backupFolderString);
-        List<OCFile> backupFiles = contactsPreferenceActivity.getStorageManager().getFolderContent(
-                backupFolder, false);
+        String contactsBackupFolderString =
+            getResources().getString(R.string.contacts_backup_folder) + OCFile.PATH_SEPARATOR;
+        String calendarBackupFolderString =
+            getResources().getString(R.string.calendar_backup_folder) + OCFile.PATH_SEPARATOR;
+
+        FileDataStorageManager storageManager = contactsPreferenceActivity.getStorageManager();
+
+        OCFile contactsBackupFolder = storageManager.getFileByDecryptedRemotePath(contactsBackupFolderString);
+        OCFile calendarBackupFolder = storageManager.getFileByDecryptedRemotePath(calendarBackupFolderString);
+
+        List<OCFile> backupFiles = storageManager.getFolderContent(contactsBackupFolder, false);
+        backupFiles.addAll(storageManager.getFolderContent(calendarBackupFolder, false));
 
         // find file with modification with date and time between 00:00 and 23:59
         // if more than one file exists, take oldest
@@ -498,38 +552,57 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
         date.set(Calendar.SECOND, 1);
         date.set(Calendar.MILLISECOND, 0);
         date.set(Calendar.AM_PM, Calendar.AM);
-        Long start = date.getTimeInMillis();
+        long start = date.getTimeInMillis();
 
         // end
         date.set(Calendar.HOUR, 23);
         date.set(Calendar.MINUTE, 59);
         date.set(Calendar.SECOND, 59);
-        Long end = date.getTimeInMillis();
+        long end = date.getTimeInMillis();
 
-        OCFile backupToRestore = null;
+        OCFile contactsBackupToRestore = null;
+        List<OCFile> calendarBackupsToRestore = new ArrayList<>();
 
         for (OCFile file : backupFiles) {
             if (start < file.getModificationTimestamp() && end > file.getModificationTimestamp()) {
-                if (backupToRestore == null) {
-                    backupToRestore = file;
-                } else if (backupToRestore.getModificationTimestamp() < file.getModificationTimestamp()) {
-                    backupToRestore = file;
+                // contact
+                if (MimeTypeUtil.isVCard(file)) {
+                    if (contactsBackupToRestore == null) {
+                        contactsBackupToRestore = file;
+                    } else if (contactsBackupToRestore.getModificationTimestamp() < file.getModificationTimestamp()) {
+                        contactsBackupToRestore = file;
+                    }
+                }
+
+                // calendars
+                if (MimeTypeUtil.isCalendar(file)) {
+                    calendarBackupsToRestore.add(file);
                 }
             }
         }
 
-        if (backupToRestore != null) {
+        List<OCFile> backupToRestore = new ArrayList<>();
+
+        if (contactsBackupToRestore != null) {
+            backupToRestore.add(contactsBackupToRestore);
+        }
+
+        backupToRestore.addAll(calendarBackupsToRestore);
+
+
+        if (backupToRestore.isEmpty()) {
+            DisplayUtils.showSnackMessage(getView().findViewById(R.id.contacts_linear_layout),
+                                          R.string.contacts_preferences_no_file_found);
+        } else {
             final User user = contactsPreferenceActivity.getUser().orElseThrow(RuntimeException::new);
-            Fragment contactListFragment = ContactListFragment.newInstance(backupToRestore, user);
+            OCFile[] files = new OCFile[backupToRestore.size()];
+            Fragment contactListFragment = BackupListFragment.newInstance(backupToRestore.toArray(files), user);
 
             contactsPreferenceActivity.getSupportFragmentManager().
-                    beginTransaction()
-                    .replace(R.id.frame_container, contactListFragment, ContactListFragment.TAG)
-                    .addToBackStack(ContactsPreferenceActivity.BACKUP_TO_LIST)
-                    .commit();
-        } else {
-            DisplayUtils.showSnackMessage(getView().findViewById(R.id.contacts_linear_layout),
-                    R.string.contacts_preferences_no_file_found);
+                beginTransaction()
+                .replace(R.id.frame_container, contactListFragment, BackupListFragment.TAG)
+                .addToBackStack(ContactsPreferenceActivity.BACKUP_TO_LIST)
+                .commit();
         }
     }
 }

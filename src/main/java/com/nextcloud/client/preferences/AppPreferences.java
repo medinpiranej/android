@@ -365,4 +365,8 @@ public interface AppPreferences {
     String getUidPid();
 
     void setUidPid(String uidPid);
+
+    long getCalendarLastBackup();
+
+    void setCalendarLastBackup(long timestamp);
 }

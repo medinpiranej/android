@@ -75,6 +75,7 @@ internal class BackgroundJobManagerImpl(
         const val JOB_IMMEDIATE_MEDIA_FOLDER_DETECTION = "immediate_media_folder_detection"
         const val JOB_NOTIFICATION = "notification"
         const val JOB_ACCOUNT_REMOVAL = "account_removal"
+        const val JOB_IMMEDIATE_CALENDAR_BACKUP = "immediate_calendar_backup"
 
         const val JOB_TEST = "test_job"
 
@@ -279,6 +280,28 @@ internal class BackgroundJobManagerImpl(
 
         workManager.enqueueUniqueWork(JOB_IMMEDIATE_CONTACTS_BACKUP, ExistingWorkPolicy.KEEP, request)
         return workManager.getJobInfo(request.id)
+    }
+
+    override fun startImmediateCalendarBackup(user: User): LiveData<JobInfo?> {
+        val data = Data.Builder()
+            .putString(CalendarBackupWork.ACCOUNT, user.accountName)
+            .putBoolean(CalendarBackupWork.FORCE, true)
+            .build()
+
+        val request = oneTimeRequestBuilder(CalendarBackupWork::class, JOB_IMMEDIATE_CALENDAR_BACKUP, user)
+            .setInputData(data)
+            .build()
+
+        workManager.enqueueUniqueWork(JOB_IMMEDIATE_CALENDAR_BACKUP, ExistingWorkPolicy.KEEP, request)
+        return workManager.getJobInfo(request.id)
+    }
+
+    override fun schedulePeriodicCalendarBackup(user: User) {
+        TODO("Not yet implemented")
+    }
+
+    override fun cancelPeriodicCalendarBackup(user: User) {
+        TODO("Not yet implemented")
     }
 
     override fun schedulePeriodicFilesSyncJob() {
