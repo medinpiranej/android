@@ -29,7 +29,7 @@ import com.owncloud.android.utils.ScreenshotTest
 import org.junit.Rule
 import org.junit.Test
 
-class ContactListFragmentIT : AbstractIT() {
+class BackupListFragmentIT : AbstractIT() {
     @get:Rule
     val testActivityRule = IntentsTestRule(ContactsPreferenceActivity::class.java, true, false)
 
@@ -79,6 +79,32 @@ class ContactListFragmentIT : AbstractIT() {
         ocFile.mimeType = "text/calendar"
 
         transaction.replace(R.id.frame_container, BackupListFragment.newInstance(ocFile, user))
+        transaction.commit()
+
+        waitForIdleSync()
+        screenshot(sut)
+
+        longSleep()
+    }
+
+    @Test
+    @ScreenshotTest
+    fun showCalendarAndContactsList() {
+        val sut = testActivityRule.launchActivity(null)
+        val transaction = sut.supportFragmentManager.beginTransaction()
+
+        val calendarFile = getFile("calendar.ics")
+        val calendarOcFile = OCFile("/calendar.ics", "00000003")
+        calendarOcFile.storagePath = calendarFile.absolutePath
+        calendarOcFile.mimeType = "text/calendar"
+
+        val contactFile = getFile("vcard.vcf")
+        val contactOcFile = OCFile("/vcard.vcf", "00000002")
+        contactOcFile.storagePath = contactFile.absolutePath
+        contactOcFile.mimeType = "text/vcard"
+
+        val files = arrayOf(calendarOcFile, contactOcFile)
+        transaction.replace(R.id.frame_container, BackupListFragment.newInstance(files, user))
         transaction.commit()
 
         waitForIdleSync()

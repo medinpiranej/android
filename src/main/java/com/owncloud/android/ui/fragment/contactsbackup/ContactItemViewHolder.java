@@ -23,44 +23,22 @@
 package com.owncloud.android.ui.fragment.contactsbackup;
 
 import android.view.View;
-import android.widget.CheckedTextView;
-import android.widget.ImageView;
 
-import com.owncloud.android.R;
+import com.owncloud.android.databinding.ContactlistListItemBinding;
 
 import androidx.recyclerview.widget.RecyclerView;
 
 class ContactItemViewHolder extends RecyclerView.ViewHolder {
-    private ImageView badge;
-    private CheckedTextView name;
+    public ContactlistListItemBinding binding;
 
-    ContactItemViewHolder(View itemView) {
-        super(itemView);
+    ContactItemViewHolder(ContactlistListItemBinding binding) {
+        super(binding.getRoot());
 
-        badge = itemView.findViewById(R.id.contactlist_item_icon);
-        name = itemView.findViewById(R.id.contactlist_item_name);
-
-
-        itemView.setTag(this);
+        this.binding = binding;
+        binding.getRoot().setTag(this);
     }
 
     public void setVCardListener(View.OnClickListener onClickListener) {
         itemView.setOnClickListener(onClickListener);
-    }
-
-    public ImageView getBadge() {
-        return badge;
-    }
-
-    public void setBadge(ImageView badge) {
-        this.badge = badge;
-    }
-
-    public CheckedTextView getName() {
-        return name;
-    }
-
-    public void setName(CheckedTextView name) {
-        this.name = name;
     }
 }

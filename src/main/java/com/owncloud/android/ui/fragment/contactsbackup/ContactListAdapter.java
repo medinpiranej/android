@@ -28,7 +28,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckedTextView;
 import android.widget.ImageView;
@@ -38,6 +37,7 @@ import com.bumptech.glide.request.target.SimpleTarget;
 import com.nextcloud.client.account.UserAccountManager;
 import com.nextcloud.client.network.ClientFactory;
 import com.owncloud.android.R;
+import com.owncloud.android.databinding.ContactlistListItemBinding;
 import com.owncloud.android.ui.TextDrawable;
 import com.owncloud.android.ui.events.VCardToggleEvent;
 import com.owncloud.android.utils.BitmapUtils;
@@ -119,9 +119,7 @@ class ContactListAdapter extends RecyclerView.Adapter<ContactItemViewHolder> {
     @NonNull
     @Override
     public ContactItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.contactlist_list_item, parent, false);
-
-        return new ContactItemViewHolder(view);
+        return new ContactItemViewHolder(ContactlistListItemBinding.inflate(LayoutInflater.from(context)));
     }
 
     @Override
@@ -131,23 +129,23 @@ class ContactListAdapter extends RecyclerView.Adapter<ContactItemViewHolder> {
 
         if (vcard != null) {
 
-            setChecked(checkedVCards.contains(position), holder.getName());
+            setChecked(checkedVCards.contains(position), holder.binding.name);
 
-            holder.getName().setText(getDisplayName(vcard));
+            holder.binding.name.setText(getDisplayName(vcard));
 
             // photo
             if (vcard.getPhotos().size() > 0) {
-                setPhoto(holder.getBadge(), vcard.getPhotos().get(0));
+                setPhoto(holder.binding.icon, vcard.getPhotos().get(0));
             } else {
                 try {
-                    holder.getBadge().setImageDrawable(
+                    holder.binding.icon.setImageDrawable(
                         TextDrawable.createNamedAvatar(
-                            holder.getName().getText().toString(),
+                            holder.binding.name.getText().toString(),
                             context.getResources().getDimension(R.dimen.list_item_avatar_icon_radius)
                                                       )
-                                                      );
+                                                        );
                 } catch (Exception e) {
-                    holder.getBadge().setImageResource(R.drawable.ic_user);
+                    holder.binding.icon.setImageResource(R.drawable.ic_user);
                 }
             }
 
@@ -201,18 +199,18 @@ class ContactListAdapter extends RecyclerView.Adapter<ContactItemViewHolder> {
     }
 
     private void toggleVCard(ContactItemViewHolder holder, int verifiedPosition) {
-        holder.getName().setChecked(!holder.getName().isChecked());
+        holder.binding.name.setChecked(!holder.binding.name.isChecked());
 
-        if (holder.getName().isChecked()) {
-            holder.getName().getCheckMarkDrawable().setColorFilter(ThemeColorUtils.primaryColor(context),
-                                                                   PorterDuff.Mode.SRC_ATOP);
+        if (holder.binding.name.isChecked()) {
+            holder.binding.name.getCheckMarkDrawable().setColorFilter(ThemeColorUtils.primaryColor(context),
+                                                                      PorterDuff.Mode.SRC_ATOP);
 
             checkedVCards.add(verifiedPosition);
             if (checkedVCards.size() == SINGLE_SELECTION) {
                 EventBus.getDefault().post(new VCardToggleEvent(true));
             }
         } else {
-            holder.getName().getCheckMarkDrawable().clearColorFilter();
+            holder.binding.name.getCheckMarkDrawable().clearColorFilter();
 
             checkedVCards.remove(verifiedPosition);
 

@@ -151,6 +151,9 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
         binding.dailyBackup.setChecked(
             arbitraryDataProvider.getBooleanValue(user, PREFERENCE_CONTACTS_AUTOMATIC_BACKUP));
 
+        binding.contacts.setChecked(checkContactBackupPermission());
+        binding.calendar.setChecked(checkCalendarBackupPermission());
+
         dailyBackupCheckedChangeListener = (buttonView, isChecked) -> {
             if (checkAndAskForContactsReadPermission()) {
                 setAutomaticBackup(isChecked);
@@ -158,18 +161,32 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
         };
 
         contactsCheckedListener = (buttonView, isChecked) -> {
-            if (checkAndAskForContactsReadPermission()) {
-                binding.backupNow.setEnabled(checkBackupNowPermission());
+            if (isChecked) {
+                checkAndAskForContactsReadPermission();
+            } else {
+                if (!binding.calendar.isChecked()) {
+                    binding.backupNow.setVisibility(View.INVISIBLE);
+                }
             }
         };
         binding.contacts.setOnCheckedChangeListener(contactsCheckedListener);
 
-        calendarCheckedListener = (buttonView, isChecked) -> checkAndAskForCalendarReadPermission();
+        calendarCheckedListener = (buttonView, isChecked) -> {
+            if (isChecked) {
+                checkAndAskForCalendarReadPermission();
+            } else {
+                if (!binding.contacts.isChecked()) {
+                    binding.backupNow.setVisibility(View.INVISIBLE);
+                }
+            }
+        };
+
         binding.calendar.setOnCheckedChangeListener(calendarCheckedListener);
 
         binding.dailyBackup.setOnCheckedChangeListener(dailyBackupCheckedChangeListener);
         binding.backupNow.setOnClickListener(v -> backup());
         binding.backupNow.setEnabled(checkBackupNowPermission());
+
         binding.contactsDatepicker.setOnClickListener(v -> openCleanDate());
 
         // display last backup
@@ -304,13 +321,14 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
             for (int index = 0; index < permissions.length; index++) {
                 if (Manifest.permission.READ_CONTACTS.equalsIgnoreCase(permissions[index])) {
                     if (grantResults[index] >= 0) {
-                        setAutomaticBackup(true);
                         break;
                     }
 
                     binding.contacts.setOnCheckedChangeListener(null);
                     binding.contacts.setChecked(false);
                     binding.contacts.setOnCheckedChangeListener(contactsCheckedListener);
+
+                    binding.backupNow.setVisibility(View.VISIBLE);
                 }
             }
         }
@@ -319,7 +337,7 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
             for (int index = 0; index < permissions.length; index++) {
                 if (Manifest.permission.READ_CALENDAR.equalsIgnoreCase(permissions[index])) {
                     if (grantResults[index] >= 0) {
-                        setAutomaticBackup(true);
+                        //setAutomaticBackup(true);
                         break;
                     }
                 }
@@ -327,6 +345,8 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
                 binding.calendar.setOnCheckedChangeListener(null);
                 binding.calendar.setChecked(false);
                 binding.calendar.setOnCheckedChangeListener(calendarCheckedListener);
+
+                binding.backupNow.setVisibility(View.VISIBLE);
             }
         }
 
@@ -334,11 +354,11 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
     }
 
     public void backup() {
-        if (checkAndAskForContactsReadPermission()) {
+        if (binding.contacts.isChecked() && checkAndAskForContactsReadPermission()) {
             startContactsBackupJob();
         }
 
-        if (checkAndAskForCalendarReadPermission()) {
+        if (binding.calendar.isChecked() && checkAndAskForCalendarReadPermission()) {
             startCalendarBackupJob();
         }
 
@@ -408,6 +428,7 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
 
         // check permissions
         if (PermissionUtil.checkSelfPermission(contactsPreferenceActivity, Manifest.permission.READ_CALENDAR)) {
+            binding.backupNow.setVisibility(View.VISIBLE);
             return true;
         } else {
             // No explanation needed, request the permission.
@@ -418,8 +439,15 @@ public class BackupFragment extends FileFragment implements DatePickerDialog.OnD
     }
 
     private boolean checkBackupNowPermission() {
-        return PermissionUtil.checkSelfPermission(getContext(), Manifest.permission.READ_CALENDAR) ||
-            PermissionUtil.checkSelfPermission(getContext(), Manifest.permission.READ_CONTACTS);
+        return checkCalendarBackupPermission() || checkContactBackupPermission();
+    }
+
+    private boolean checkCalendarBackupPermission() {
+        return PermissionUtil.checkSelfPermission(getContext(), Manifest.permission.READ_CALENDAR);
+    }
+
+    private boolean checkContactBackupPermission() {
+        return PermissionUtil.checkSelfPermission(getContext(), Manifest.permission.READ_CONTACTS);
     }
 
     public void openCleanDate() {
