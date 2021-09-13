@@ -119,6 +119,6 @@ public class FetchRemoteFileTask extends AsyncTask<Void, Void, String> {
     protected void onPostExecute(String message) {
         super.onPostExecute(message);
 
-        fileDisplayActivity.showFiles(false);
+        fileDisplayActivity.showFile(message);
     }
 }
