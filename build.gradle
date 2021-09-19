@@ -165,6 +165,10 @@ android {
                 dimension "default"
             }
 
+            filerun {
+                applicationId 'com.filerun.android'
+                dimension "default"
+            }
             gplay {
                 applicationId 'com.nextcloud.client'
                 dimension "default"
@@ -266,6 +270,7 @@ dependencies {
     // dependencies for app building
     implementation 'androidx.multidex:multidex:2.0.1'
 //    implementation project('nextcloud-android-library')
+    filerunImplementation "com.github.nextcloud:android-library:$androidLibraryVersion"
     genericImplementation "com.github.nextcloud:android-library:$androidLibraryVersion"
     gplayImplementation "com.github.nextcloud:android-library:$androidLibraryVersion"
     versionDevImplementation "com.github.nextcloud:android-library:$androidLibraryVersion"

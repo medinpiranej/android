@@ -39,7 +39,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 
 
 public class AuthenticatorActivityIT extends AbstractIT {
-    private static final String URL = "cloud.nextcloud.com";
+    private static final String URL = "cloud.filerun.com";
     @Rule public IntentsTestRule<AuthenticatorActivity> activityRule = new IntentsTestRule<>(AuthenticatorActivity.class,
                                                                                              true,
                                                                                              false);

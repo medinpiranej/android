@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="file_migration_failed_dir_already_exists">FileRun folder already exists</string>
+    <string name="single_sign_on_request_token" formatted="true">Allow %1$s to access your FileRun account
+        %2$s?</string>
+    <string name="store_full_desc">The self-hosted productivity platform that keeps you in control.\n\nFeatures:\n* Easy, modern interface, suited to the theme of your server\n* Upload files to your FileRun server\n* Share them with others\n* Keep your favorite files and folders synced\n* Search across all folders on your server\n* Auto Upload for photos and videos taken by your device\n* Keep up to date with notifications\n* Multi-account support\n* Secure access to your data with fingerprint or PIN\n* Integration with DAVx5 (formerly known as DAVdroid) for easy setup of calendar &amp; Contacts synchronization\n\nPlease report all issues at https://github.com/filerun/android/issues and discuss this app at https://help.filerun.com/c/clients/android\n\nNew to FileRun? FileRun is a private file sync &amp; share and communication server. It is libre software, and you can host it yourself or pay a company to do it for you. That way, you are in control of your photos, your calendar and contact data, your documents and everything else.\n\nCheck out FileRun at https://filerun.com</string>
+
+</resources>

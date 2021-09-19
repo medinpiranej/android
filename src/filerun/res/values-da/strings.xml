@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="file_migration_failed_dir_already_exists">FileRun mappe eksisterer allerede</string>
+    <string name="single_sign_on_request_token" formatted="true">Tillad %1$s adgang til din Filerun account %2$s?</string>
+    <string name="store_full_desc">Produktivitets platformen der giver dig fuld kontrol.\nFeatures:\n* Simpelt, moderne interface skræddersyet efter dit server tema.\n* Upload filer til din Filerun server\n* Del dem med andre\n* Få dine favorit filer og mapper synkroniseret\n* Søg på tværs af alle dine mapper på din server\n* Auto upload fotos og videoer taget med din device\n* Vær up to date med notifikationer\n* Supporterer flere konti\n* Sikker adgang til dine data med fingeraftryk eller PIN\n* Integration med DAVx5 (tidligere DAVdroid) for nem opsætning af kalender &amp;Synkronisering af kontaker\n\nVenligst rapporter alle fejl og mangler på https://github.com/filerun/android/issues og deltag i debat om denne app på https://help.filerun.com/c/clients/android\n\nFørste gang du prøver Filerun? Filerun er en privat fil synkroniserings- &amp;, dele- og kommunikationsserver. Det er fri software, og du kan være din egen vært eller betale et firma for at være vært for dig. På den måde har du kontrol over dine photos, din kalender og kontakt data, dine dokumenter og alt det andet.\n\n Tjek Filerun på https://filerun.com</string>
+
+</resources>
