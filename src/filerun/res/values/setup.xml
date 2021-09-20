@@ -35,7 +35,7 @@
     <bool name="show_outdated_server_warning">true</bool>
 
     <!-- Contacts backup -->
-    <bool name="contacts_backup">true</bool>
+    <bool name="contacts_backup">false</bool>
     <string name="contacts_backup_folder">/.Contacts-Backup</string>
     <integer name="contacts_backup_expire">-1</integer>
 
@@ -54,10 +54,13 @@
     <!-- Multiaccount support -->
     <bool name="multiaccount_support">true</bool>
 
-    <!-- Drawer options -->
+    <!-- Drawer options, ==> Here can be enabled/disabled side menu buttons -->
     <bool name="recently_added_enabled">false</bool>
     <bool name="recently_modified_enabled">false</bool>
-    <bool name="shared_enabled">true</bool>
+    <bool name="shared_enabled">false</bool>
+    <bool name="notifications_btn_enabled">false</bool>
+    <bool name="media_btn_enabled">false</bool>
+    <bool name="quota_enabled">false</bool>
     <bool name="videos_enabled">false</bool>
     <bool name="show_drawer_logout">false</bool>
     <bool name="show_drawer_contacts_backup">false</bool> <!-- if false it will shown in settings -->
@@ -66,13 +69,16 @@
     <bool name="passcode_enabled">true</bool>
     <bool name="device_credentials_enabled">true</bool>
     <bool name="show_hidden_files_enabled">true</bool>
-    <bool name="davdroid_integration_enabled">true</bool>
-    <bool name="help_enabled">true</bool>
+    <!--  Shows or hides "Sync calendar and contacts" option on settings   -->
+    <bool name="davdroid_integration_enabled">false</bool>
+    <!--  Shows or hides "Help" option on settings  -->
+    <bool name="help_enabled">false</bool>
     <string name="url_help">https://help.filerun.com/c/clients/android/</string>
     <bool name="privacy_enabled">true</bool>
     <string name="privacy_url">https://filerun.com/privacy</string>
     <bool name="imprint_enabled">false</bool>
-    <bool name="recommend_enabled">true</bool>
+    <!--  Shows or hides "Recommend" option on settings  -->
+    <bool name="recommend_enabled">false</bool>
     <bool name="logger_enabled">false</bool>
     <bool name="sourcecode_enabled">true</bool>
     <string name="sourcecode_url" translatable="false">https://github.com/filerun/android</string>
@@ -92,8 +98,8 @@
     <!--Destination mail for sending log files -->
     <string name="mail_logger"></string>
 
-    <!-- Determine is participate enabled -->
-    <bool name="participate_enabled">true</bool>
+    <!-- Determine is participate enabled ==> This removes community btn and functionality on side menu  -->
+    <bool name="participate_enabled">false</bool>
     <!-- Participate links -->
     <string name="fdroid_beta_link" translatable="false">https://f-droid.org/repository/browse/?fdid=com.filerun.android.beta</string>
     <string name="beta_apk_link" translatable="false">https://download.filerun.com/android/dev/latest.apk</string>

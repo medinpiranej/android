@@ -240,15 +240,7 @@ public class SettingsActivity extends ThemedPreferenceActivity
         if (pAboutApp != null) {
             pAboutApp.setTitle(String.format(getString(R.string.about_android), getString(R.string.app_name)));
 
-            String buildNumber = getResources().getString(R.string.buildNumber);
-
-            if (TextUtils.isEmpty(buildNumber)) {
-                pAboutApp.setSummary(String.format(getString(R.string.about_version), appVersion));
-            } else {
-                pAboutApp.setSummary(String.format(getString(R.string.about_version_with_build),
-                                                   appVersion,
-                                                   buildNumber));
-            }
+            pAboutApp.setSummary(String.format(getString(R.string.about_version_nextcloud), appVersion));
         }
 
         // license

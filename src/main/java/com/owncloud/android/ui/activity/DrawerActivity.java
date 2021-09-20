@@ -403,6 +403,10 @@ public abstract class DrawerActivity extends ToolbarActivity
         DrawerMenuUtil.removeMenuItem(menu, R.id.nav_community,
                                       !getResources().getBoolean(R.bool.participate_enabled));
         DrawerMenuUtil.removeMenuItem(menu, R.id.nav_shared, !getResources().getBoolean(R.bool.shared_enabled));
+        DrawerMenuUtil.removeMenuItem(menu, R.id.nav_notifications,
+                                      !getResources().getBoolean(R.bool.notifications_btn_enabled));
+        DrawerMenuUtil.removeMenuItem(menu, R.id.nav_gallery,
+                                      !getResources().getBoolean(R.bool.media_btn_enabled));
         DrawerMenuUtil.removeMenuItem(menu, R.id.nav_contacts, !getResources().getBoolean(R.bool.contacts_backup)
             || !getResources().getBoolean(R.bool.show_drawer_contacts_backup));
 
@@ -846,8 +850,9 @@ public abstract class DrawerActivity extends ToolbarActivity
                     final long quotaValue = quota.getQuota();
 
                     runOnUiThread(() -> {
-                        if (quotaValue > 0 || quotaValue == GetUserInfoRemoteOperation.SPACE_UNLIMITED
-                            || quotaValue == GetUserInfoRemoteOperation.QUOTA_LIMIT_INFO_NOT_AVAILABLE) {
+                        if (getResources().getBoolean(R.bool.media_btn_enabled)
+                            && (quotaValue > 0 || quotaValue == GetUserInfoRemoteOperation.SPACE_UNLIMITED
+                                || quotaValue == GetUserInfoRemoteOperation.QUOTA_LIMIT_INFO_NOT_AVAILABLE)) {
                             /*
                              * show quota in case
                              * it is available and calculated (> 0) or
